@@ -57,8 +57,17 @@ public class MiniGamesRoot extends Game {
 	
 	public void Launch(MiniGame game)
 	{
+		if (currentGame != null) {
+			currentGame.end();
+			currentGame.unloadResources();
+			currentGame.dispose();
+			currentGame = null;
+		}
+		
 		currentGame = game;
 		setScreen(game);
+		
+		game.loadResources();
 	}
 	
 	public void dispose()

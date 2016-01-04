@@ -15,6 +15,8 @@ public class MiniGame implements Screen {
 	
 	public PerspectiveCamera camera3d;
 	public OrthographicCamera camera2d;
+	
+	public boolean isRunning;
 
 	
 	public MiniGame(MiniGameGlobalProperties properties) {
@@ -25,6 +27,8 @@ public class MiniGame implements Screen {
 		camera2d.setToOrtho(false, properties.screenWidth, properties.screenHeight);
 		camera2d.position.set(properties.screenWidth/2, properties.screenHeight/2, 0);
 		camera2d.update();
+		
+		isRunning = false;
 	}
 
 	@Override
@@ -40,6 +44,20 @@ public class MiniGame implements Screen {
 		
 		Gdx.gl.glClearColor(0, 0, 0, 0);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+		
+		if (!isRunning)
+		{
+			if (assets.update())
+			{
+				isRunning = true;
+				begin();
+			}
+			else
+			{
+				//loading screen
+				renderLoadingScreen(delta,assets.getProgress());
+			}
+		}
 	}
 
 	@Override
@@ -65,4 +83,21 @@ public class MiniGame implements Screen {
 	public void dispose() {
 	}
 
+	public void loadResources() {	
+	}
+	
+	public void unloadResources() {
+	}
+	
+	public void begin() {
+		
+	}
+	
+	public void end() {
+		
+	}
+	
+	public void renderLoadingScreen(float delta, float progress){
+		
+	}
 }
