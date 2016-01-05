@@ -143,6 +143,7 @@ public class Map extends GameObject {
 			}
 		}
 		
+		System.gc();
 	}
 	
 	public void draw (Batch batch, float parentAlpha) {

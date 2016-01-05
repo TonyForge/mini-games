@@ -77,7 +77,17 @@ public class DungeonBSP {
 				
 				if (leftChild != null && rightChild != null)
 				{
-					createHall(leftChild.getRoom(),rightChild.getRoom());
+					LinkedList<Rectangle> lRooms = leftChild.getRoomsList();
+					LinkedList<Rectangle> rRooms = rightChild.getRoomsList();
+					LinkedList<Rectangle> twoClosestRooms = new LinkedList<Rectangle>();
+					
+					findTwoClosestRooms(lRooms, rRooms, twoClosestRooms);
+					
+					createHall(twoClosestRooms.get(0),twoClosestRooms.get(1));
+					
+					lRooms.clear();
+					rRooms.clear();
+					twoClosestRooms.clear();
 				}
 			}
 			else
@@ -97,6 +107,70 @@ public class DungeonBSP {
 			}
 		}
 		
+		public void findTwoClosestRooms(LinkedList<Rectangle> leftRooms, LinkedList<Rectangle> rightRooms, LinkedList<Rectangle> out)
+		{
+			Iterator<Rectangle> itLeft = leftRooms.iterator();
+			Iterator<Rectangle> itRight = null;
+			Rectangle leftRoom, rightRoom;
+			
+			Rectangle minPairA = null, minPairB = null;
+			float minDistance = -1;
+			
+			float cx1,cy1,cx2,cy2,dist;
+			
+			while (itLeft.hasNext())
+			{
+				leftRoom = itLeft.next();
+				
+				cx1 = leftRoom.x + leftRoom.width/2f;
+				cy1 = leftRoom.y + leftRoom.height/2f;
+				
+				itRight = rightRooms.iterator();
+				while (itRight.hasNext())
+				{
+					rightRoom = itRight.next();
+
+					cx2 = rightRoom.x + rightRoom.width/2f;
+					cy2 = rightRoom.y + rightRoom.height/2f;
+					
+					if (minDistance == -1)
+					{
+						minDistance = (cx2 - cx1)*(cx2 - cx1) + (cy2 - cy1)*(cy2 - cy1);
+						minPairA = leftRoom;
+						minPairB = rightRoom;
+					}
+					else
+					{
+						dist = (cx2 - cx1)*(cx2 - cx1) + (cy2 - cy1)*(cy2 - cy1);
+						if (dist < minDistance)
+						{
+							minDistance = dist;
+							minPairA = leftRoom;
+							minPairB = rightRoom;
+						}
+					}
+				}
+			}
+			
+			out.push(minPairA);
+			out.push(minPairB);
+		}
+		
+		public LinkedList<Rectangle> getRoomsList()
+		{
+			LinkedList<Rectangle> result = new LinkedList<Rectangle>();
+			collectRooms(result);
+			
+			return result;
+		}
+		
+		public void collectRooms(LinkedList<Rectangle> collection)
+		{
+			if (room != null) collection.push(room);
+			if (leftChild != null) leftChild.collectRooms(collection);
+			if (rightChild != null) rightChild.collectRooms(collection);
+		}
+		
 		public Rectangle getRoom()
 		{
 			if (room != null)
@@ -105,6 +179,7 @@ public class DungeonBSP {
 			{
 				Rectangle lRoom = null;
 				Rectangle rRoom = null;
+				
 				if (leftChild != null)
 				{
 					lRoom = leftChild.getRoom();
@@ -113,6 +188,7 @@ public class DungeonBSP {
 				{
 					rRoom = rightChild.getRoom();
 				}
+				
 				if (lRoom == null && rRoom == null)
 					return null;
 				else if (rRoom == null)
