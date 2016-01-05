@@ -1,14 +1,19 @@
 package treasurehunter;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.IntArray;
 
 public class Map extends GameObject {
 
+	public DungeonBSP dungeonBSP = null;
 	public IntArray tiles = null;
 	public int tilesCount;
 	public int tiles_xSize;
@@ -30,9 +35,27 @@ public class Map extends GameObject {
 		view = new Rectangle();
 		tileWorldRect = new Rectangle();
 	}
-
+	
+	public int GetRandomFloor()
+	{
+		float rnd = (float) Math.random();
+		
+		if (rnd > 0.6f) return 1;
+		else
+		{
+			rnd = (float) Math.random();
+		}
+		
+		return 2+(int)Math.floor((10f*rnd));
+	}
+	
 	public void Generate(int xSize, int ySize)
 	{
+		
+		
+		dungeonBSP = new DungeonBSP();
+		dungeonBSP.GenerateDungeon(0, 0, xSize, ySize);
+		
 		tilesCount = xSize*ySize;
 		tiles_xSize = xSize;
 		tiles_ySize = ySize;
@@ -49,11 +72,77 @@ public class Map extends GameObject {
 		
 		tiles.size = tilesCount;
 		
-		for (int y = 0; y < tiles_ySize; y++)
-		for (int x = 0; x < tiles_xSize; x++)
+		int x = 0;
+		int y = 0;
+		
+		for (y = 0; y < tiles_ySize; y++)
+		for (x = 0; x < tiles_xSize; x++)
 		{
-			tiles.set(x+y*tiles_xSize,1);
+			tiles.set(x+y*tiles_xSize,0);
 		}
+		
+		dungeonBSP.ParseRooms_Begin();
+		Rectangle room = null;
+		LinkedList<Vector2> halls = null;
+		
+		while (dungeonBSP.ParseRooms_Next())
+		{
+			room = dungeonBSP.parseRooms_room;
+			halls = dungeonBSP.parseRooms_halls;
+			
+			if (room == null)
+			if (halls != null)
+			{
+				Iterator<Vector2> it = halls.iterator();
+				if (it.hasNext())
+				{
+					Vector2 startPoint = it.next();
+					Vector2 endPoint;
+					Vector2 tmpVector = new Vector2();
+					
+					int len;
+					while (it.hasNext())
+					{
+						endPoint = it.next();
+						
+						
+						
+						tmpVector.x = endPoint.x - startPoint.x;
+						tmpVector.y = endPoint.y - startPoint.y;
+						len = (int) Math.ceil(tmpVector.len());
+						
+						tmpVector.setLength(1);
+						
+						for (int i = 0; i < len; i++)
+						{
+							tiles.set((int)(startPoint.x + tmpVector.x*i) + ((int)(startPoint.y + tmpVector.y*i))*tiles_xSize,GetRandomFloor());
+						}
+						
+						tiles.set((int)startPoint.x+(int)startPoint.y*tiles_xSize,GetRandomFloor());
+						tiles.set((int)endPoint.x+(int)endPoint.y*tiles_xSize,GetRandomFloor());
+						
+						startPoint = endPoint;
+					}
+				}
+			}
+		}
+		
+		dungeonBSP.ParseRooms_Begin();
+		
+		while (dungeonBSP.ParseRooms_Next())
+		{
+			room = dungeonBSP.parseRooms_room;
+			
+			if (room != null)
+			{
+				for (y = (int) room.y; y < (int)(room.y + room.height); y++)
+				for (x = (int) room.x; x < (int)(room.x + room.width); x++)
+				{
+					tiles.set(x+y*tiles_xSize,1);
+				}
+			}
+		}
+		
 	}
 	
 	public void draw (Batch batch, float parentAlpha) {

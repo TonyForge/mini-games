@@ -1,6 +1,8 @@
 package treasurehunter;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.tforgegames.minigames.MiniGame;
@@ -23,7 +25,14 @@ public class TreasureHunter extends MiniGame {
 		if (isRunning)
 		{
 			stage.act();
-			camera2d.translate(-15f*delta, -15f*delta);
+			if (Gdx.input.isTouched())
+			{
+				//Gdx.input.getX()
+				Vector2 v = new Vector2(Gdx.input.getX()-camera2d.viewportWidth/2,Gdx.input.getY()-camera2d.viewportHeight/2);
+				v.setLength(500);
+				camera2d.translate(v.x*delta, -v.y*delta);
+			}
+			
 			camera2d.update();
 			stage.draw();
 		}
@@ -31,7 +40,7 @@ public class TreasureHunter extends MiniGame {
 	
 	public void begin() {
 		gameMap = new Map(this);
-		gameMap.Generate(10, 10);
+		gameMap.Generate(100, 100);
 		
 		stage.addActor(gameMap);
 	}
