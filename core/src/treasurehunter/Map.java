@@ -2,6 +2,7 @@ package treasurehunter;
 
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Stack;
 
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -51,8 +52,6 @@ public class Map extends GameObject {
 	
 	public void Generate(int xSize, int ySize)
 	{
-		
-		
 		dungeonBSP = new DungeonBSP();
 		dungeonBSP.GenerateDungeon(0, 0, xSize, ySize);
 		
@@ -81,6 +80,7 @@ public class Map extends GameObject {
 			tiles.set(x+y*tiles_xSize,0);
 		}
 		
+		//set halls
 		dungeonBSP.ParseRooms_Begin();
 		Rectangle room = null;
 		LinkedList<Vector2> halls = null;
@@ -127,6 +127,7 @@ public class Map extends GameObject {
 			}
 		}
 		
+		//set rooms
 		dungeonBSP.ParseRooms_Begin();
 		
 		while (dungeonBSP.ParseRooms_Next())
@@ -142,6 +143,140 @@ public class Map extends GameObject {
 				}
 			}
 		}
+		
+		//select start room
+		Rectangle startRoom = dungeonBSP.GetDeepestRoom(dungeonBSP.root.leftChild);
+		
+		tiles.set((int)startRoom.x + (int)startRoom.y*tiles_xSize, 12);
+		
+		//use wave algorithm to create map progress and find farthest point where will be exit
+		class WaveElement
+		{
+			int waveIndex;
+			int tileX, tileY;
+		}
+		
+		int maxWaveIndex = 0;
+		WaveElement maxWaveElement = null;
+		
+
+		
+		Stack<WaveElement> stack = new Stack<WaveElement>();
+		
+		IntArray waves = new IntArray(true,tilesCount);
+		for (x = 0; x < tilesCount; x++)
+		{
+			if (tiles.get(x) != 0)
+			waves.add(0);
+			else
+			waves.add(-1);
+		}
+		
+		WaveElement wave = new WaveElement();
+		wave.waveIndex = 1;
+		wave.tileX = (int)startRoom.x + (int)(startRoom.width-1)/2;
+		wave.tileY = (int)startRoom.y + (int)(startRoom.height-1)/2;
+		
+		waves.set((wave.tileX-1) + wave.tileY*tiles_xSize,1);
+		
+		stack.push(wave);
+
+		while (stack.size() != 0)
+		{
+			wave = stack.pop();
+			
+			if (wave.waveIndex > maxWaveIndex)
+			{
+				maxWaveIndex = wave.waveIndex;
+				maxWaveElement = wave;
+			}
+			
+			if (wave.tileX > 0 && wave.tileX < tiles_xSize-1 &&
+				wave.tileY > 0 && wave.tileY < tiles_ySize-1)
+			{
+				WaveElement nextWave = null;
+				
+				if (waves.get((wave.tileX-1) + wave.tileY*tiles_xSize)==0)
+				{
+					waves.set((wave.tileX-1) + wave.tileY*tiles_xSize,wave.waveIndex+1);
+					nextWave = new WaveElement();
+					nextWave.waveIndex = wave.waveIndex+1;
+					nextWave.tileX = wave.tileX-1;
+					nextWave.tileY = wave.tileY;
+					stack.push(nextWave);
+				}
+				
+				if (waves.get((wave.tileX+1) + wave.tileY*tiles_xSize)==0)
+				{
+					waves.set((wave.tileX+1) + wave.tileY*tiles_xSize,wave.waveIndex+1);
+					nextWave = new WaveElement();
+					nextWave.waveIndex = wave.waveIndex+1;
+					nextWave.tileX = wave.tileX+1;
+					nextWave.tileY = wave.tileY;
+					stack.push(nextWave);
+				}
+				
+				if (waves.get(wave.tileX + (wave.tileY+1)*tiles_xSize)==0)
+				{
+					waves.set(wave.tileX + (wave.tileY+1)*tiles_xSize,wave.waveIndex+1);
+					nextWave = new WaveElement();
+					nextWave.waveIndex = wave.waveIndex+1;
+					nextWave.tileX = wave.tileX;
+					nextWave.tileY = wave.tileY+1;
+					stack.push(nextWave);
+				}
+				
+				if (waves.get(wave.tileX + (wave.tileY-1)*tiles_xSize)==0)
+				{
+					waves.set(wave.tileX + (wave.tileY-1)*tiles_xSize,wave.waveIndex+1);
+					nextWave = new WaveElement();
+					nextWave.waveIndex = wave.waveIndex+1;
+					nextWave.tileX = wave.tileX;
+					nextWave.tileY = wave.tileY-1;
+					stack.push(nextWave);
+				}
+			}
+		}
+		
+		tiles.set(maxWaveElement.tileX + maxWaveElement.tileY*tiles_xSize, 12);
+		
+		stack.clear();
+		waves.clear();
+		
+		
+		//Rectangle endRoom = dungeonBSP.GetDeepestRoom(dungeonBSP.root.rightChild);
+		
+		//tiles.set((int)(startRoom.x+startRoom.width/2)+((int)(startRoom.y+startRoom.height/2))*tiles_xSize,0);
+		//tiles.set((int)(endRoom.x+endRoom.width/2)+((int)(endRoom.y+endRoom.height/2))*tiles_xSize,0);
+		//smooth map
+		/*LinkedList<Integer> additionalTiles = new LinkedList<Integer>();
+		int tileE, tileW, tileS, tileN;
+		
+		for (y = 1; y < tiles_ySize-1; y++)
+		for (x = 1; x < tiles_xSize-1; x++)
+		{
+			if (tiles.get(x+y*tiles_xSize) == 0)
+			{
+				tileE = tiles.get(x+1+y*tiles_xSize);
+				tileW = tiles.get(x-1+y*tiles_xSize);
+				tileN = tiles.get(x+(y+1)*tiles_xSize);
+				tileS = tiles.get(x+(y-1)*tiles_xSize);
+				
+				if ((tileN != 0 && tileS == 0 && (tileE != 0 || tileW != 0)) ||
+					(tileS != 0 && tileN == 0 && (tileE != 0 || tileW != 0)) ||
+					(tileW != 0 && tileE == 0 && (tileS != 0 || tileN != 0)) ||
+					(tileE != 0 && tileW == 0 && (tileS != 0 || tileN != 0)))
+					additionalTiles.push(x+y*tiles_xSize);
+			}
+		}
+		
+		Iterator<Integer> it = additionalTiles.iterator();
+		while (it.hasNext())
+		{
+			tiles.set(it.next(),1);
+		}
+		
+		additionalTiles.clear();*/
 		
 		System.gc();
 	}

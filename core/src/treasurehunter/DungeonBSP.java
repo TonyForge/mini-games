@@ -10,20 +10,20 @@ public class DungeonBSP {
 	
 	public int MIN_LEAF_SIZE = 6;
 	public int MAX_LEAF_SIZE = 20;
-	public float MAX_HALL_SECTION_LENGTH = 2f;
+	//public float MAX_HALL_SECTION_LENGTH = 2f;
 	
 	class Leaf
 	{
-		public int x, y, w, h;
+		public int x, y, w, h, depth;
 		public Leaf leftChild;
 		public Leaf rightChild;
 		
 		public Rectangle room;
 		public LinkedList<Vector2> hallPath;
 		
-		public Leaf(int x, int y, int w, int h)
+		public Leaf(int x, int y, int w, int h, int depth)
 		{
-			this.x = x; this.y = y; this.w = w; this.h = h;
+			this.x = x; this.y = y; this.w = w; this.h = h; this.depth = depth;
 			leftChild = null; rightChild = null;
 			room = null;
 			hallPath = null;
@@ -50,13 +50,13 @@ public class DungeonBSP {
 			
 			if (splitH)
 			{
-				leftChild = new Leaf(x, y, w, split);
-	            rightChild = new Leaf(x, y + split, w, h - split);
+				leftChild = new Leaf(x, y, w, split, depth + 1);
+	            rightChild = new Leaf(x, y + split, w, h - split, depth + 1);
 	        }
 			else
 	        {
-	        	leftChild = new Leaf(x, y, split, h);
-	        	rightChild = new Leaf(x + split, y, w - split, h);
+	        	leftChild = new Leaf(x, y, split, h, depth + 1);
+	        	rightChild = new Leaf(x + split, y, w - split, h, depth + 1);
 	        }
 			
 	        return true;
@@ -208,24 +208,23 @@ public class DungeonBSP {
 			
 			float beginX, beginY, endX, endY;
 			
-			beginX = l.x + l.width*(float)Math.random();
-			beginY = l.y + l.height*(float)Math.random();
+			beginX = l.x + (l.width-1)*(float)Math.random();
+			beginY = l.y + (l.height-1)*(float)Math.random();
 			
-			endX = r.x + r.width*(float)Math.random();
-			endY = r.y + r.height*(float)Math.random();
+			endX = r.x + (r.width-1)*(float)Math.random();
+			endY = r.y + (r.height-1)*(float)Math.random();
 			
-			Vector2 v = new Vector2(endX - beginX, endY - beginY);
-			v.setLength(1);
+			//Vector2 v = new Vector2(endX - beginX, endY - beginY);
+			//v.setLength(1);
 			
-			Vector2 pathPoint = null;
+			//Vector2 pathPoint = null;
 			
-			float len = (float) Math.sqrt((endX - beginX)*(endX - beginX) + (endY - beginY)*(endY - beginY));
-			int lenSteps = (int) (len / MAX_HALL_SECTION_LENGTH);
+			//float len = (float) Math.sqrt((endX - beginX)*(endX - beginX) + (endY - beginY)*(endY - beginY));
+			//int lenSteps = (int) (len / MAX_HALL_SECTION_LENGTH);
 			
 			hallPath.push(new Vector2(beginX, beginY));
-			
 			hallPath.push(new Vector2(endX, beginY));
-			
+			hallPath.push(new Vector2(endX, endY));
 			/*for (int i = 0; i < lenSteps; i++)
 			{
 				if (pathPoint == null)
@@ -241,7 +240,20 @@ public class DungeonBSP {
 				hallPath.push(pathPoint);
 			}*/
 			
-			hallPath.push(new Vector2(endX, endY));
+			
+		}
+		
+		
+		private void FindDeepest()
+		{
+			if (leftChild != null) leftChild.FindDeepest();
+			if (rightChild != null) rightChild.FindDeepest();
+			
+			if (room != null && depth > currentDeepest)
+			{
+				currentDeepest = depth;
+				currentDeepestRectangle = room;
+			}
 		}
 	}
 	
@@ -256,7 +268,7 @@ public class DungeonBSP {
 	public void GenerateDungeon(int left, int top, int width, int height)
 	{
 		leafsCollection.clear();
-		root = new Leaf(left, top, width, height);
+		root = new Leaf(left, top, width, height, 0);
 		leafsCollection.push(root);
 		
 		boolean didSplit = true;
@@ -286,6 +298,19 @@ public class DungeonBSP {
 		
 		root.createRooms();
 	}
+	
+	public int currentDeepest;
+	public Rectangle currentDeepestRectangle;
+	
+	public Rectangle GetDeepestRoom(Leaf subTreeRoot)
+	{
+		currentDeepest = subTreeRoot.depth;
+		currentDeepestRectangle = subTreeRoot.room;
+		subTreeRoot.FindDeepest();
+		
+		return currentDeepestRectangle;
+	}
+
 	
 	public Iterator<Leaf> parseRooms_iterator;
 	public Rectangle parseRooms_room;
