@@ -46,7 +46,7 @@ public class MiniGamesRoot extends Game {
 				properties.screenHeight=Gdx.graphics.getHeight();
 				
 				
-				Launch(new TreasureHunter(properties));
+				Launch(new TreasureHunter(properties));// Func1(properties));
 			}
 		}
 		else

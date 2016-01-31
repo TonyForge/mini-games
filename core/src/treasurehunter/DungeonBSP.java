@@ -299,6 +299,19 @@ public class DungeonBSP {
 		root.createRooms();
 	}
 	
+	public Rectangle GetRoomThatContains(int tileX, int tileY)
+	{
+		Iterator<Leaf> it = leafsCollection.iterator();
+		Rectangle result = null;
+		while (it.hasNext())
+		{
+			result = it.next().room;
+			if (result != null && result.contains(tileX, tileY)) 
+				return result;
+		}
+		return null;
+	}
+	
 	public int currentDeepest;
 	public Rectangle currentDeepestRectangle;
 	

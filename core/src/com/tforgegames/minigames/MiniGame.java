@@ -77,6 +77,7 @@ public class MiniGame implements Screen {
 
 	@Override
 	public void hide() {
+		
 	}
 
 	@Override

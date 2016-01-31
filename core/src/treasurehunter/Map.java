@@ -16,6 +16,8 @@ public class Map extends GameObject {
 
 	public DungeonBSP dungeonBSP = null;
 	public IntArray tiles = null;
+	public IntArray waveMap = null;
+	
 	public int tilesCount;
 	public int tiles_xSize;
 	public int tiles_ySize;
@@ -52,9 +54,6 @@ public class Map extends GameObject {
 	
 	public void Generate(int xSize, int ySize)
 	{
-		dungeonBSP = new DungeonBSP();
-		dungeonBSP.GenerateDungeon(0, 0, xSize, ySize);
-		
 		tilesCount = xSize*ySize;
 		tiles_xSize = xSize;
 		tiles_ySize = ySize;
@@ -62,14 +61,19 @@ public class Map extends GameObject {
 		if (tiles == null)
 		{
 			tiles = new IntArray(true,tilesCount);
+			waveMap = new IntArray(true,tilesCount);
 		}
 		else
 		{
 			if (tiles.size < tilesCount)
-			tiles.ensureCapacity(tilesCount-tiles.size);
+			{
+				tiles.ensureCapacity(tilesCount-tiles.size);
+				waveMap.ensureCapacity(tilesCount-tiles.size);
+			}
 		}
 		
 		tiles.size = tilesCount;
+		waveMap.size = tilesCount;
 		
 		int x = 0;
 		int y = 0;
@@ -78,7 +82,12 @@ public class Map extends GameObject {
 		for (x = 0; x < tiles_xSize; x++)
 		{
 			tiles.set(x+y*tiles_xSize,0);
+			waveMap.set(x+y*tiles_xSize,0);
 		}
+		
+		//generate dungeon
+		dungeonBSP = new DungeonBSP();
+		dungeonBSP.GenerateDungeon(0, 0, xSize, ySize);
 		
 		//set halls
 		dungeonBSP.ParseRooms_Begin();
@@ -104,9 +113,7 @@ public class Map extends GameObject {
 					while (it.hasNext())
 					{
 						endPoint = it.next();
-						
-						
-						
+
 						tmpVector.x = endPoint.x - startPoint.x;
 						tmpVector.y = endPoint.y - startPoint.y;
 						len = (int) Math.ceil(tmpVector.len());
@@ -127,6 +134,7 @@ public class Map extends GameObject {
 			}
 		}
 		
+		
 		//set rooms
 		dungeonBSP.ParseRooms_Begin();
 		
@@ -144,10 +152,12 @@ public class Map extends GameObject {
 			}
 		}
 		
+		
 		//select start room
 		Rectangle startRoom = dungeonBSP.GetDeepestRoom(dungeonBSP.root.leftChild);
 		
-		tiles.set((int)startRoom.x + (int)startRoom.y*tiles_xSize, 12);
+		tiles.set(((int)startRoom.x + (int)startRoom.width/2) + ((int)startRoom.y + (int)startRoom.height/2)*tiles_xSize, 12);
+		
 		
 		//use wave algorithm to create map progress and find farthest point where will be exit
 		class WaveElement
@@ -158,18 +168,16 @@ public class Map extends GameObject {
 		
 		int maxWaveIndex = 0;
 		WaveElement maxWaveElement = null;
-		
 
-		
 		Stack<WaveElement> stack = new Stack<WaveElement>();
 		
-		IntArray waves = new IntArray(true,tilesCount);
+		IntArray waves = waveMap;
 		for (x = 0; x < tilesCount; x++)
 		{
 			if (tiles.get(x) != 0)
-			waves.add(0);
+			waves.set(x,0);
 			else
-			waves.add(-1);
+			waves.set(x,-1);
 		}
 		
 		WaveElement wave = new WaveElement();
@@ -238,47 +246,72 @@ public class Map extends GameObject {
 			}
 		}
 		
-		tiles.set(maxWaveElement.tileX + maxWaveElement.tileY*tiles_xSize, 12);
+		Rectangle finalRoom = dungeonBSP.GetRoomThatContains(maxWaveElement.tileX, maxWaveElement.tileY);
+		tiles.set(((int)finalRoom.x + (int)(finalRoom.width-1) / 2) + ((int)finalRoom.y + (int)(finalRoom.height-1) / 2)*tiles_xSize, 12);
 		
 		stack.clear();
-		waves.clear();
 		
-		
-		//Rectangle endRoom = dungeonBSP.GetDeepestRoom(dungeonBSP.root.rightChild);
-		
-		//tiles.set((int)(startRoom.x+startRoom.width/2)+((int)(startRoom.y+startRoom.height/2))*tiles_xSize,0);
-		//tiles.set((int)(endRoom.x+endRoom.width/2)+((int)(endRoom.y+endRoom.height/2))*tiles_xSize,0);
-		//smooth map
-		/*LinkedList<Integer> additionalTiles = new LinkedList<Integer>();
-		int tileE, tileW, tileS, tileN;
-		
-		for (y = 1; y < tiles_ySize-1; y++)
-		for (x = 1; x < tiles_xSize-1; x++)
-		{
-			if (tiles.get(x+y*tiles_xSize) == 0)
-			{
-				tileE = tiles.get(x+1+y*tiles_xSize);
-				tileW = tiles.get(x-1+y*tiles_xSize);
-				tileN = tiles.get(x+(y+1)*tiles_xSize);
-				tileS = tiles.get(x+(y-1)*tiles_xSize);
-				
-				if ((tileN != 0 && tileS == 0 && (tileE != 0 || tileW != 0)) ||
-					(tileS != 0 && tileN == 0 && (tileE != 0 || tileW != 0)) ||
-					(tileW != 0 && tileE == 0 && (tileS != 0 || tileN != 0)) ||
-					(tileE != 0 && tileW == 0 && (tileS != 0 || tileN != 0)))
-					additionalTiles.push(x+y*tiles_xSize);
-			}
-		}
-		
-		Iterator<Integer> it = additionalTiles.iterator();
-		while (it.hasNext())
-		{
-			tiles.set(it.next(),1);
-		}
-		
-		additionalTiles.clear();*/
-		
+		//place items and creatures
+		PlaceItemsAndCreatures(startRoom, finalRoom);
+
 		System.gc();
+	}
+	
+	private void PlaceItemsAndCreatures(Rectangle startRoom, Rectangle finalRoom)
+	{
+		int wayStartX = (int)startRoom.x + (int)startRoom.width/2;
+		int wayStartY = (int)startRoom.y + (int)startRoom.height/2;
+		
+		int wayEndX = (int)finalRoom.x + (int)finalRoom.width/2;
+		int wayEndY = (int)finalRoom.y + (int)finalRoom.height/2;
+		
+		int wayX, wayY;
+		
+		float wayLength = (float)waveMap.get(wayEndX + wayEndY*tiles_xSize);
+		float wayProgress = 100f;
+		//moving from end to start (because of wave enumeration)
+		wayX = wayEndX; wayY = wayEndY;
+		int waveN, waveS, waveE, waveW, waveC;
+
+		for (;;)
+		{
+			waveC = waveMap.get(wayX + wayY*tiles_xSize);
+			if (waveC == 1) break; //end of moving
+	
+			waveN = waveMap.get(wayX + (wayY+1)*tiles_xSize);
+			waveS = waveMap.get(wayX + (wayY-1)*tiles_xSize);
+			waveE = waveMap.get((wayX+1) + wayY*tiles_xSize);
+			waveW = waveMap.get((wayX-1) + wayY*tiles_xSize);
+			
+			wayProgress = ((float)waveC / wayLength)*100;
+			
+			if (waveS == -1 && waveN == -1)
+			{
+				//horizontal hall
+			}
+			else
+			if (waveE == -1 && waveW == -1)
+			{
+				//vertical hall
+			} else
+			{
+				//inside room or cross-roads
+			}
+			
+			if (waveN > 1 && waveN < waveC)
+			{
+				wayY = (wayY+1);
+			} else if (waveS > 1 && waveS < waveC)
+			{
+				wayY = (wayY-1);
+			} else if (waveE > 1 && waveE < waveC)
+			{
+				wayX = (wayX+1);
+			} else if (waveW > 1 && waveW < waveC)
+			{
+				wayX = (wayX-1);
+			} else break; //halt! can't move anymore (unusual situation)
+		}
 	}
 	
 	public void draw (Batch batch, float parentAlpha) {
@@ -301,13 +334,16 @@ public class Map extends GameObject {
 			tileIndexY = tileIndex / 12;
 			tileIndexX = tileIndex-tileIndexY*12;
 			
-			tileWorldRect.set(x*40, y*40, 40, 40);
+			tileWorldRect.set(x*80, y*80, 80, 80);
 			
 			if (view.overlaps(tileWorldRect))
 			//if (view.contains(tileWorldRect.x + tileWorldRect.width/2,tileWorldRect.y+tileWorldRect.height /2))
 			{
 				tileRegion.setRegion(tileRegionX+tileIndexX*40, tileRegionY+tileIndexY*40, 40, 40);
 				batch.draw(tileRegion, tileWorldRect.x, tileWorldRect.y);
+				batch.draw(tileRegion, tileWorldRect.x+40, tileWorldRect.y);
+				batch.draw(tileRegion, tileWorldRect.x+40, tileWorldRect.y+40);
+				batch.draw(tileRegion, tileWorldRect.x, tileWorldRect.y+40);
 			}
 		}
 	}
